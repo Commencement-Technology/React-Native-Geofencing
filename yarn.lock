@@ -2551,6 +2551,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/haversine@npm:^1.1.8":
+  version: 1.1.8
+  resolution: "@types/haversine@npm:1.1.8"
+  checksum: c728627e328e877f2f0369f385130fc6a4fd68626942719dd7401076fd10a2ebb3fb1084355739d1b81d850e28533c4ef9782b90e16467fdd886d92a04fb6492
+  languageName: node
+  linkType: hard
+
 "@types/istanbul-lib-coverage@npm:*, @types/istanbul-lib-coverage@npm:^2.0.0, @types/istanbul-lib-coverage@npm:^2.0.1":
   version: 2.0.6
   resolution: "@types/istanbul-lib-coverage@npm:2.0.6"
@@ -2804,15 +2811,20 @@ __metadata:
     "@react-native/eslint-config": ^0.72.2
     "@react-native/metro-config": ^0.72.11
     "@tsconfig/react-native": ^3.0.0
+    "@types/haversine": ^1.1.8
     "@types/react": ^18.0.24
     "@types/react-test-renderer": ^18.0.0
     babel-jest: ^29.2.1
     eslint: ^8.19.0
+    haversine: ^1.1.1
     jest: ^29.2.1
     metro-react-native-babel-preset: 0.76.8
     prettier: ^2.4.1
     react: 18.2.0
     react-native: 0.72.4
+    react-native-background-fetch: ^4.2.1
+    react-native-background-geolocation: ^4.16.3
+    react-native-permissions: ^4.1.5
     react-test-renderer: 18.2.0
     typescript: 4.8.4
   languageName: unknown
@@ -5150,6 +5162,13 @@ __metadata:
   dependencies:
     function-bind: ^1.1.2
   checksum: e8516f776a15149ca6c6ed2ae3110c417a00b62260e222590e54aa367cbcd6ed99122020b37b7fbdf05748df57b265e70095d7bf35a47660587619b15ffb93db
+  languageName: node
+  linkType: hard
+
+"haversine@npm:^1.1.1":
+  version: 1.1.1
+  resolution: "haversine@npm:1.1.1"
+  checksum: 0d635e4da5bdd21c74ca92bb1bd44d6f8c6ca2166447fdbc33bb51469172c2326b103588a942767820602e3ba72d0a780b7180b042fac36381186bbc54316fcb
   languageName: node
   linkType: hard
 
@@ -8294,6 +8313,36 @@ __metadata:
   version: 17.0.2
   resolution: "react-is@npm:17.0.2"
   checksum: 9d6d111d8990dc98bc5402c1266a808b0459b5d54830bbea24c12d908b536df7883f268a7868cfaedde3dd9d4e0d574db456f84d2e6df9c4526f99bb4b5344d8
+  languageName: node
+  linkType: hard
+
+"react-native-background-fetch@npm:^4.2.1, react-native-background-fetch@npm:~4.2.5":
+  version: 4.2.5
+  resolution: "react-native-background-fetch@npm:4.2.5"
+  checksum: d124418a69377f0399b72cb86bfea5e801a4dc2d5b8215e6736fd21836a82ad514a3b89fd2915b866c205e6e7f2feddd0486d4893a0261e7d978502773397d45
+  languageName: node
+  linkType: hard
+
+"react-native-background-geolocation@npm:^4.16.3":
+  version: 4.16.3
+  resolution: "react-native-background-geolocation@npm:4.16.3"
+  dependencies:
+    react-native-background-fetch: ~4.2.5
+  checksum: 8764eff1b1fe4e89131157c10ea67b5b67464c6efc820a7687a8ed6388f4f1ab36244bd082a1bc0743da92404b3a063f468a597669c91302e1e474b0da9a0a50
+  languageName: node
+  linkType: hard
+
+"react-native-permissions@npm:^4.1.5":
+  version: 4.1.5
+  resolution: "react-native-permissions@npm:4.1.5"
+  peerDependencies:
+    react: ">=18.1.0"
+    react-native: ">=0.70.0"
+    react-native-windows: ">=0.70.0"
+  peerDependenciesMeta:
+    react-native-windows:
+      optional: true
+  checksum: dc4b366a0f561a47f032c027eb703a2be45e801788b915ed583e38f617eea23656eb63a77b17fb3a663fe3199b2ec25788f799e751421634e35a64f5258feed9
   languageName: node
   linkType: hard
 
