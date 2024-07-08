@@ -7,10 +7,12 @@ import BackgroundGeolocation, {
 import haversine from 'haversine';
 import {isWithinRange} from './helpers';
 import {AndroidStationCoordinates, IOSStationCoordinates} from './constants';
+import BackgroundFetch from 'react-native-background-fetch';
+import {State} from './react-native-background-geolocation';
 
 export const Geofencing = () => {
   const [enabled, setEnabled] = useState(false);
-  const [location, setLocation] = React.useState('');
+  const [location, setLocation] = React.useState<Location>(null);
   const [geofenceEvent, setGeofenceEvent] = React.useState<GeofenceEvent>(null);
 
   const [pings, setPings] = useState<
@@ -35,6 +37,13 @@ export const Geofencing = () => {
       notifyOnExit: true,
     };
   });
+
+  /// Clear all markers when plugin is toggled off.
+  const clearMarkers = () => {
+    setLocation(null);
+    setGeofenceEvent(null);
+    setPings([]);
+  };
 
   const onGeofence = () => {
     const location: Location = geofenceEvent.location;
@@ -95,6 +104,7 @@ export const Geofencing = () => {
       'haversine distance should be close to 200 m',
       haversinDistance,
     );
+    //for entry and exit make the api call for geofence
   };
 
   useEffect(() => {
@@ -118,80 +128,118 @@ export const Geofencing = () => {
     subscriptions.splice(0, subscriptions.length);
   };
 
-  useEffect(() => {
-    /// 1.  Subscribe to events.
-    console.log('subscribing to events');
-    subscribe(
-      BackgroundGeolocation.onLocation(location => {
-        console.log(
-          '[onLocation]',
-          location?.coords?.latitude,
-          location?.coords?.longitude,
-        );
-        setLocation(JSON.stringify(location, null, 2));
-      }),
-    );
-
-    subscribe(
-      BackgroundGeolocation.onMotionChange(event => {
-        // console.log('[onMotionChange]', event);
-      }),
-    );
-
-    subscribe(
-      BackgroundGeolocation.onGeofence(event => {
-        console.log('event', event);
-        setGeofenceEvent(event);
-      }),
-    );
-
-    subscribe(
-      BackgroundGeolocation.onActivityChange(event => {
-        // console.log('[onActivityChange]', event);
-      }),
-    );
-
-    subscribe(
-      BackgroundGeolocation.onProviderChange(event => {
-        // console.log('[onProviderChange]', event);
-      }),
-    );
-
-    /// 2. ready the plugin.
-    console.log('Making BackgroundGeolocation ready with config');
-
-    BackgroundGeolocation.ready({
-      reset: false,
-      // Geolocation Config
-      desiredAccuracy: BackgroundGeolocation.DESIRED_ACCURACY_HIGH,
-      distanceFilter: 10,
-      // Activity Recognition
-      stopTimeout: 5,
-      locationAuthorizationRequest: 'Always',
-      backgroundPermissionRationale: {
-        title:
-          "Allow {applicationName} to access this device's location even when closed or not in use.",
-        message:
-          'We require your location even when app is closed or not in use to recommend you offers based on places you visit.',
-        positiveAction: 'Change to "{backgroundPermissionOptionLabel}"',
-        negativeAction: 'Cancel',
+  const initBackgroundFetch = async () => {
+    BackgroundFetch.configure(
+      {
+        minimumFetchInterval: 15,
+        enableHeadless: true,
+        stopOnTerminate: false,
       },
-      // Application config
-      debug: true, // <-- enable this hear sounds for background-geolocation life-cycle.
-      logLevel: BackgroundGeolocation.LOG_LEVEL_VERBOSE,
-      stopOnTerminate: false, // <-- Allow the background-service to continue tracking when user closes the app.
-      startOnBoot: true, // <-- Auto start tracking when device is powered-up.,
-      enableHeadless: true,
-      preventSuspend: true,
-      pausesLocationUpdatesAutomatically: false,
-      // HTTP / SQLite config
-      //url: 'http://yourserver.com/locations',
-      batchSync: false, // <-- [Default: false] Set true to sync locations to server in a single HTTP request.
-      autoSync: true, // <-- [Default: true] Set true to sync each location to server as it arrives.
-      //preventSuspend: true,
-      geofenceInitialTriggerEntry: true,
-    }).then(state => {
-      console.log('Adding geofence for all stations with 200 m radius');
+      async taskId => {
+        console.log('[BackgroundFetch]', taskId);
+        const location = await BackgroundGeolocation.getCurrentPosition({
+          extras: {
+            event: 'background-fetch',
+          },
+          maximumAge: 10000,
+          persist: true,
+          timeout: 30,
+          samples: 2,
+        });
+        console.log('BACKGROUND FETCH: [getCurrentPosition]', location);
+        BackgroundFetch.finish(taskId);
+      },
+      async taskId => {
+        console.log('[BackgroundFetch] TIMEOUT:', taskId);
+        BackgroundFetch.finish(taskId);
+      },
+    );
+  };
+
+  useEffect(() => {
+    (async () => {
+      //get latest enabled value and set it
+      BackgroundGeolocation.getState().then((state: State) => {
+        console.log('Latest enable state', state.enabled);
+        setEnabled(state.enabled);
+      });
+
+      //Subscribe to events.
+      console.log('subscribing to events');
+      subscribe(BackgroundGeolocation.onEnabledChange(setEnabled));
+      subscribe(
+        BackgroundGeolocation.onLocation(
+          locationData => {
+            console.log(
+              'Lattitude, Longitude',
+              locationData.coords.latitude,
+              locationData.coords.longitude,
+            );
+            setLocation(locationData);
+          },
+          error => {
+            console.warn('[onLocation] ERROR: ', error);
+          },
+        ),
+      );
+      subscribe(
+        BackgroundGeolocation.onMotionChange(event => {
+          // console.log('[onMotionChange]', event);
+        }),
+      );
+      subscribe(
+        BackgroundGeolocation.onGeofence(event => {
+          console.log('event', event);
+          setGeofenceEvent(event);
+        }),
+      );
+      subscribe(
+        BackgroundGeolocation.onActivityChange(event => {
+          // console.log('[onActivityChange]', event);
+        }),
+      );
+      subscribe(
+        BackgroundGeolocation.onProviderChange(event => {
+          // console.log('[onProviderChange]', event);
+        }),
+      );
+      /// 2. ready the plugin.
+      console.log('Making BackgroundGeolocation ready with config');
+
+      initBackgroundFetch();
+
+      const state: State = await BackgroundGeolocation.ready({
+        reset: false,
+        debug: true, // <-- enable this hear sounds for background-geolocation life-cycle.
+        logLevel: BackgroundGeolocation.LOG_LEVEL_VERBOSE,
+        // Geolocation Config
+        desiredAccuracy: BackgroundGeolocation.DESIRED_ACCURACY_HIGH,
+        distanceFilter: 10,
+        // Activity Recognition
+        stopTimeout: 5,
+        locationAuthorizationRequest: 'Always',
+        backgroundPermissionRationale: {
+          title:
+            "Allow {applicationName} to access this device's location even when closed or not in use.",
+          message:
+            'We require your location even when app is closed or not in use to recommend you offers based on places you visit.',
+          positiveAction: 'Change to "{backgroundPermissionOptionLabel}"',
+          negativeAction: 'Cancel',
+        },
+        // Application config
+        stopOnTerminate: false, // <-- Allow the background-service to continue tracking when user closes the app.
+        startOnBoot: true, // <-- Auto start tracking when device is powered-up.,
+        enableHeadless: true,
+        // HTTP / SQLite config
+        //url: 'http://yourserver.com/locations',
+        autoSync: true, // <-- [Default: true] Set true to sync each location to server as it arrives.
+        maxDaysToPersist: 14,
+      });
+      setEnabled(state.enabled);
+      console.log('state.enabled value: ', state.enabled);
+      console.log(
+        'Ready Success : Now adding geofence for all stations with 200 m radius',
+      );
       BackgroundGeolocation.addGeofences(geofences)
         .then(() => {
           console.log('Success: Geofence created for station1');
@@ -199,30 +247,36 @@ export const Geofencing = () => {
         .catch(error => {
           console.log('Error: Error while creating geofences');
         });
-      setEnabled(state.enabled);
-      console.log(
-        '- BackgroundGeolocation is configured and ready: ',
-        state.enabled,
-      );
-    });
 
-    return () => {
-      // Remove BackgroundGeolocation event-subscribers when the View is removed or refreshed
-      // during development live-reload.  Without this, event-listeners will accumulate with
-      // each refresh during live-reload.
-      unsubscribe();
-    };
+      return () => {
+        // Remove BackgroundGeolocation event-subscribers when the View is removed or refreshed
+        // during development live-reload.  Without this, event-listeners will accumulate with
+        // each refresh during live-reload.
+        unsubscribe();
+        clearMarkers();
+      };
+    })();
   }, []);
 
   useEffect(() => {
-    if (enabled) {
-      BackgroundGeolocation.start();
-    } else {
-      console.log('STOPPING');
-      BackgroundGeolocation.stop();
-      setLocation('');
+    if (!enabled) {
+      clearMarkers();
     }
   }, [enabled]);
+
+  const onEnableSwitchToggle = async (value: boolean) => {
+    let state = await BackgroundGeolocation.getState();
+    setEnabled(value);
+    if (value) {
+      if (state.trackingMode == 1) {
+        BackgroundGeolocation.start();
+      } else {
+        BackgroundGeolocation.startGeofences();
+      }
+    } else {
+      BackgroundGeolocation.stop();
+    }
+  };
 
   return (
     <View>
@@ -235,7 +289,7 @@ export const Geofencing = () => {
           marginHorizontal: 24,
         }}>
         <Text> Enable Geofencing </Text>
-        <Switch value={enabled} onValueChange={setEnabled} />
+        <Switch value={enabled} onValueChange={onEnableSwitchToggle} />
       </View>
       <View
         style={{
@@ -246,7 +300,7 @@ export const Geofencing = () => {
           marginHorizontal: 24,
         }}>
         <Text> User's location </Text>
-        <Text>{location}</Text>
+        <Text>{JSON.stringify(location)}</Text>
       </View>
       <FlatList
         data={pings}
